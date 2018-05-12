@@ -113,8 +113,11 @@ private:
   	unique_lock<mutex> lock(m);
 
   	while(!cv.wait_until(lock, standby_time, [&]{ return failed; })) {
+		cerr << "in power_off loop" << endl;
   		if (standby_time <= std::chrono::system_clock::now()) {
+			cerr << "standby time expired" << endl;
         if (is_power_on) {
+			cerr << "powering off" << endl;
     			g_parser->StandbyDevices(addr);
     			is_power_on = false;
         }
@@ -125,7 +128,7 @@ private:
 public:
   Power()  :
 	  device_name(DEFAULT_DEVICE_NAME),
-	  verbose(false),
+	  verbose(true),
 	  failed(false),
     is_power_on(false),
 	  standby(600.),
@@ -140,6 +143,7 @@ public:
   	unique_lock<mutex> lock(m);
 
     if (!is_power_on) {
+	    cerr << "sending powerOnDevices" << endl;
     	is_power_on = g_parser->PowerOnDevices(addr);
     }
 

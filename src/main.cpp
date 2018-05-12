@@ -95,7 +95,7 @@ int main(int ac, char * av[]) {
 			unsigned char magU=floor(sqrt(imv[i].x_vector*imv[i].x_vector+imv[i].y_vector*imv[i].y_vector));
 			if(magU > magnitude) c++;
 		}
-		cout << "mag: " << (int)c << endl;
+		//cout << "mag: " << (int)c << endl;
 		if(c >= total) {
 			send_motion_detect(socket, c);
 			power.power_on();
