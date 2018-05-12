@@ -1,3 +1,5 @@
+#include "power.h"
+
 #include <boost/program_options.hpp>
 #include <boost/asio.hpp>
 

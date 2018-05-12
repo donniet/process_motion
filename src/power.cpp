@@ -3,9 +3,6 @@
 #include <iostream>
 #include <atomic>
 
-#include <libcec/cec.h>
-#include <libcec/cecloader.h>
-
 #include "power.h"
 
 using std::cout;
@@ -29,7 +26,7 @@ void Power::CecAlert(void *cbParam, const libcec_alert type, const libcec_parame
 			g_parser->Close();
 			if(!g_parser->Open(g_port.c_str())) {
 				cerr << "failed to reconnect.\n";
-        failed.test_and_set();
+        			failed.test_and_set();
 			}
 		}
 	}
