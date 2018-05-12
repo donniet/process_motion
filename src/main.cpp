@@ -73,6 +73,8 @@ int main(int ac, char * av[]) {
 	socket.open(ip::udp::v4());
 	remote_endpoint = ip::udp::endpoint(ip::address::from_string(remote), remote_port);
 
+	Power power;
+
 	if (test) {
 		send_motion_detect(socket, 70);
 		send_motion_detect(socket, 71);

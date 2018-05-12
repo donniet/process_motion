@@ -22,6 +22,7 @@ private:
   std::string g_port;
   string device_name;
   bool verbose;
+  atomi_flag failed;
 
 
 private:
@@ -43,7 +44,7 @@ private:
   			g_parser->Close();
   			if(!g_parser->Open(g_port.c_str())) {
   				cerr << "failed to reconnect.\n";
-  				// interrupted.test_and_set();
+          failed.test_and_set();
   			}
   		}
   	}
@@ -84,11 +85,18 @@ private:
     }
   }
 public:
-  Power() : device_name(DEFAULT_DEVICE_NAME), verbose(false) {
+  Power() : device_name(DEFAULT_DEVICE_NAME), verbose(false), failed(ATOMIC_FLAG_INIT) {
     init();
   }
   string get_port() const {
     return g_port;
+  }
+  bool is_fail() {
+    if (failed.test_and_set()) {
+      return true;
+    }
+    failed.clear();
+    return false;
   }
   ~Power() {
     UnloadLibCec(g_parser);
