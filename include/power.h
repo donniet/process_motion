@@ -112,13 +112,13 @@ private:
   void power_off_func() {
   	unique_lock<mutex> lock(m);
 
-  	while(!cv.wait_until(lock, standby_time, [&]{ return failed })) {
+  	while(!cv.wait_until(lock, standby_time, [&]{ return failed; })) {
   		if (standby_time <= std::chrono::system_clock::now()) {
         if (is_power_on) {
     			g_parser->StandbyDevices(addr);
     			is_power_on = false;
         }
-        standy_time = std::chrono::system_clock::now() + standby;
+        standby_time = std::chrono::system_clock::now() + standby;
   		}
   	}
   }
@@ -136,6 +136,7 @@ public:
   }
 
   void power_on() {
+	  cerr << "powering on" << endl;
   	unique_lock<mutex> lock(m);
 
     if (!is_power_on) {
