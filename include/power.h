@@ -2,6 +2,10 @@
 #include <string>
 #include <iostream>
 #include <atomic>
+#include <thread>
+#include <condition_variable>
+#include <chrono>
+#include <mutex>
 
 #include <libcec/cec.h>
 #include <libcec/cecloader.h>
@@ -11,6 +15,9 @@ using std::cerr;
 using std::endl;
 using std::string;
 using std::atomic_flag;
+using std::mutex;
+using std::unique_lock;
+using std::condition_variable;
 
 using namespace CEC;
 
@@ -23,8 +30,16 @@ private:
   ICECCallbacks        g_callbacks;
   std::string g_port;
   string device_name;
+  cec_logical_address addr; // = (cec_logical_address)0;
   bool verbose;
+  bool is_power_on;
+  std::chrono::duration<double> standby;
+  std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double> > standby_time;
+  mutex m;
+  condition_variable cv;
+
   atomic_flag failed;
+  std::thread power_off_thread;
 
 
 private:
@@ -85,10 +100,38 @@ private:
     if (!g_parser->Open(g_port.c_str())) {
       throw string("could not open device");
     }
+    addr = (cec_logical_address)0;
+  }
+  void power_off_func() {
+	unique_lock<mutex> lock(m);
+
+	while(true) {
+		cv.wait_until(lock, standby_time);
+
+		if (standby_time <= std::chrono::system_clock::now()) {
+			g_parser->StandbyDevices(addr);
+			is_power_on = false;
+		}
+	}
   }
 public:
-  Power()  : device_name(DEFAULT_DEVICE_NAME), verbose(false), failed(ATOMIC_FLAG_INIT) {
+  Power()  : 
+	  device_name(DEFAULT_DEVICE_NAME), 
+	  verbose(false), 
+	  failed(ATOMIC_FLAG_INIT), 
+	  standby(600.),
+	  standby_time(std::chrono::system_clock::now()), 
+	  power_off_thread(&Power::power_off_func, this) 
+  {
     init();
+  }
+
+  void power_on() {
+	unique_lock<mutex> lock(m);	
+	is_power_on = g_parser->PowerOnDevices(addr);
+	standby_time = std::chrono::system_clock::now() + standby;
+	lock.unlock();
+	cv.notify_one();
   }
   string get_port() const {
     return g_port;

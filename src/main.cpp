@@ -97,6 +97,9 @@ int main(int ac, char * av[]) {
 		}
 		cout << "mag: " << (int)c << endl;
 		if(c >= total) {
+			send_motion_detect(socket, c);
+			power.power_on();
+
 			cout << "detected motion" << endl;
 		}
 	}
