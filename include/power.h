@@ -38,7 +38,7 @@ private:
   mutex m;
   condition_variable cv;
 
-  atomic_flag failed;
+  bool failed;
   std::thread power_off_thread;
 
 
@@ -54,6 +54,8 @@ private:
     reinterpret_cast<Power*>(cbParam)->CecAlert(cbParam, type, param);
   }
   void CecAlert(void *cbParam, const libcec_alert type, const libcec_parameter param) {
+    unique_lock<mutex> lock(m);
+
   	switch (type) {
   	case CEC_ALERT_CONNECTION_LOST:
   		cerr << "connection lost, trying to reconnect\n" << endl;
@@ -61,7 +63,9 @@ private:
   			g_parser->Close();
   			if(!g_parser->Open(g_port.c_str())) {
   				cerr << "failed to reconnect.\n";
-          			failed.test_and_set();
+          failed = true;
+          lock.unlock();
+          cv.notify_all();
   			}
   		}
   	}
@@ -90,6 +94,7 @@ private:
     cec_adapter_descriptor devices[10];
     uint8_t iDevicesFound = g_parser->DetectAdapters(devices, 10, NULL, true);
     if (iDevicesFound <= 0) {
+      failed = true;
       throw string("no devices found");
     }
     cout << "devices found:\n";
@@ -98,52 +103,61 @@ private:
     }
     g_port = devices[0].strComName;
     if (!g_parser->Open(g_port.c_str())) {
+      failed = true;
       throw string("could not open device");
     }
     addr = (cec_logical_address)0;
   }
+
   void power_off_func() {
-	unique_lock<mutex> lock(m);
+  	unique_lock<mutex> lock(m);
 
-	while(true) {
-		cv.wait_until(lock, standby_time);
-
-		if (standby_time <= std::chrono::system_clock::now()) {
-			g_parser->StandbyDevices(addr);
-			is_power_on = false;
-		}
-	}
+  	while(!cv.wait_until(lock, standby_time, [&]{ return failed })) {
+  		if (standby_time <= std::chrono::system_clock::now()) {
+        if (is_power_on) {
+    			g_parser->StandbyDevices(addr);
+    			is_power_on = false;
+        }
+        standy_time = std::chrono::system_clock::now() + standby;
+  		}
+  	}
   }
 public:
-  Power()  : 
-	  device_name(DEFAULT_DEVICE_NAME), 
-	  verbose(false), 
-	  failed(ATOMIC_FLAG_INIT), 
+  Power()  :
+	  device_name(DEFAULT_DEVICE_NAME),
+	  verbose(false),
+	  failed(false),
+    is_power_on(false),
 	  standby(600.),
-	  standby_time(std::chrono::system_clock::now()), 
-	  power_off_thread(&Power::power_off_func, this) 
+	  standby_time(std::chrono::system_clock::now()),
+	  power_off_thread(&Power::power_off_func, this)
   {
     init();
   }
 
   void power_on() {
-	unique_lock<mutex> lock(m);	
-	is_power_on = g_parser->PowerOnDevices(addr);
-	standby_time = std::chrono::system_clock::now() + standby;
-	lock.unlock();
-	cv.notify_one();
+  	unique_lock<mutex> lock(m);
+
+    if (!is_power_on) {
+    	is_power_on = g_parser->PowerOnDevices(addr);
+    }
+
+  	standby_time = std::chrono::system_clock::now() + standby;
+  	lock.unlock();
+  	cv.notify_one();
   }
   string get_port() const {
     return g_port;
   }
   bool is_fail() {
-    if (failed.test_and_set()) {
-      return true;
-    }
-    failed.clear();
-    return false;
+    unique_lock<mutex> lock(m);
+    return failed;
   }
   ~Power() {
+    unique_lock<mutex> lock(m);
     UnloadLibCec(g_parser);
+    failed = true;
+    cv.notify_all();
+    power_off_thread.join();
   }
 };
