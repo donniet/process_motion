@@ -23,6 +23,7 @@ private:
   string device_name;
   bool verbose;
 
+
 private:
   static void handleCecLogMessage(void * cbParam, const cec_log_message * message) {
     reinterpret_cast<Power*>(cbParam)->CecLogMessage(cbParam, message);
@@ -42,7 +43,7 @@ private:
   			g_parser->Close();
   			if(!g_parser->Open(g_port.c_str())) {
   				cerr << "failed to reconnect.\n";
-  				interrupted.test_and_set();
+  				// interrupted.test_and_set();
   			}
   		}
   	}
@@ -56,7 +57,7 @@ private:
     if (verbose) {
       g_callbacks.logMessage      = &Power::handleCecLogMessage;
     }
-    g_callbacks.alert           = &Power::CecAlert;
+    g_callbacks.alert           = &Power::handleCecAlert;
     g_config.callbackParam = reinterpret_cast<void*>(this);
     g_config.callbacks = &g_callbacks;
     g_config.deviceTypes.Add(CEC_DEVICE_TYPE_PLAYBACK_DEVICE);
@@ -64,14 +65,14 @@ private:
     g_parser = LibCecInitialise(&g_config);
 
     if (!g_parser) {
-      throw string("could not initialize libcec")
+      throw string("could not initialize libcec");
     }
 
     g_parser->InitVideoStandalone();
     cec_adapter_descriptor devices[10];
     uint8_t iDevicesFound = g_parser->DetectAdapters(devices, 10, NULL, true);
     if (iDevicesFound <= 0) {
-      throw string("no devices found")
+      throw string("no devices found");
     }
     cout << "devices found:\n";
     for(int i = 0; i < iDevicesFound; i++) {
