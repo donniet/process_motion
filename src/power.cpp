@@ -1,7 +1,13 @@
+
+#include <string>
+#include <iostream>
+
 #include <libcec/cec.h>
 #include <libcec/cecloader.h>
 
-#include <string>
+using std::cout;
+using std::cerr;
+using std::endl;
 
 using std::string;
 
@@ -21,7 +27,7 @@ private:
     reinterpret_cast<Power*>(cbParam)->CecLogMessage(cbParam, message);
   }
   void CecLogMessage(void *cbParam, const cec_log_message* message) {
-  	std::cerr << message->message << std::endl;
+  	cerr << message->message << endl;
   }
 
   static void handleCecAlert(void * cbParam, const libcec_alert type, const libcec_parameter param) {
@@ -30,11 +36,11 @@ private:
   void CecAlert(void *cbParam, const libcec_alert type, const libcec_parameter param) {
   	switch (type) {
   	case CEC_ALERT_CONNECTION_LOST:
-  		std::cerr << "connection lost, trying to reconnect\n" << std::endl;
+  		cerr << "connection lost, trying to reconnect\n" << endl;
   		if(g_parser) {
   			g_parser->Close();
   			if(!g_parser->Open(g_port.c_str())) {
-  				std::cerr << "failed to reconnect.\n";
+  				cerr << "failed to reconnect.\n";
   				interrupted.test_and_set();
   			}
   		}
@@ -66,9 +72,9 @@ private:
     if (iDevicesFound <= 0) {
       throw string("no devices found")
     }
-    std::cout << "devices found:\n";
+    cout << "devices found:\n";
     for(int i = 0; i < iDevicesFound; i++) {
-      std::cout << devices[i].strComName << std::endl;
+      cout << devices[i].strComName << endl;
     }
     g_port = devices[0].strComName;
     if (!g_parser->Open(g_port.c_str())) {
