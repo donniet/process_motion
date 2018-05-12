@@ -22,7 +22,7 @@ private:
   std::string g_port;
   string device_name;
   bool verbose;
-  atomi_flag failed;
+  atomic_flag failed;
 
 
 private:

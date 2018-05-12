@@ -1,6 +1,7 @@
 
 #include <string>
 #include <iostream>
+#include <atomic>
 
 #include <libcec/cec.h>
 #include <libcec/cecloader.h>
@@ -11,6 +12,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::string;
+using std::atomic_flag;
 
 using namespace CEC;
 
