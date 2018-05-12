@@ -1,6 +1,7 @@
 
 #include <string>
 #include <iostream>
+#include <atomic>
 
 #include <libcec/cec.h>
 #include <libcec/cecloader.h>
@@ -9,6 +10,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::string;
+using std::atomic_flag;
 
 using namespace CEC;
 
@@ -22,7 +24,7 @@ private:
   std::string g_port;
   string device_name;
   bool verbose;
-  atomi_flag failed;
+  atomic_flag failed;
 
 
 private:
