@@ -8,8 +8,9 @@
 using std::cout;
 using std::cerr;
 using std::endl;
-
 using std::string;
+
+using namespace CEC;
 
 const char * DEFAULT_DEVICE_NAME = "Smart Mirror";
 
