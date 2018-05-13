@@ -5,8 +5,11 @@
 
 #include <iostream>
 #include <string>
+#include <chrono>
 
 #include <math.h>
+
+using std::literals::chrono_literals;
 
 using namespace boost::program_options;
 using namespace boost::asio;
@@ -15,6 +18,7 @@ using std::cin;
 using std::cout;
 using std::cerr;
 using std::endl;
+
 
 struct motion_vector {
 	signed char x_vector;
@@ -89,7 +93,19 @@ int main(int ac, char * av[]) {
 	auto bytes = len * sizeof(motion_vector);
 	auto imv = new motion_vector[len];
 
+	auto sampling_frequency = 500ms;
+
+	auto start = std::chrono::system_clock::now();
+
 	while(cin.read(reinterpret_cast<char*>(imv), bytes)) {
+		auto now = std::chrono::system_clock::now();
+
+		if (now - start < sampling_frequency) {
+			continue;
+		}
+
+		start = now;
+
 		int c = 0;
 		for(int i = 0; c < total && i < len; i++) {
 			unsigned char magU=floor(sqrt(imv[i].x_vector*imv[i].x_vector+imv[i].y_vector*imv[i].y_vector));
