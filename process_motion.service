@@ -3,7 +3,7 @@ Description=Motion Detecting Power Saver
 After=syslog.target
 
 [Service]
-ExecStart=/home/pi/process_motion/process_motion_wrapper
+ExecStart=/home/pi/src/process_motion/process_motion_wrapper
 KillSignal=SIGINT
 
 [Install]

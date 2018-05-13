@@ -47,7 +47,7 @@ private:
     reinterpret_cast<Power*>(cbParam)->CecLogMessage(cbParam, message);
   }
   void CecLogMessage(void *cbParam, const cec_log_message* message) {
-  	cerr << message->message << endl;
+  	cerr << "CEC:" << message->message << endl;
   }
 
   static void handleCecAlert(void * cbParam, const libcec_alert type, const libcec_parameter param) {
@@ -73,7 +73,7 @@ private:
 
   void init() {
     g_config.Clear();
-    snprintf(g_config.strDeviceName, device_name.length(), device_name.c_str());
+    snprintf(g_config.strDeviceName, device_name.length() + 1, device_name.c_str());
     g_config.clientVersion      = LIBCEC_VERSION_CURRENT;
     g_config.bActivateSource    = 1;
     if (verbose) {

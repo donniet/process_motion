@@ -2,3 +2,4 @@ process_motion
 *.o
 *.d
 *.swp
+*.data

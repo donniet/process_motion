@@ -9,7 +9,7 @@
 
 #include <math.h>
 
-using std::literals::chrono_literals;
+using namespace std::literals::chrono_literals;
 
 using namespace boost::program_options;
 using namespace boost::asio;
@@ -89,11 +89,12 @@ int main(int ac, char * av[]) {
 		return 1;
 	}
 
+	auto magnitude2 = magnitude * magnitude;
 	auto len = (mbx+1)*mby;
 	auto bytes = len * sizeof(motion_vector);
 	auto imv = new motion_vector[len];
 
-	auto sampling_frequency = 500ms;
+	auto sampling_frequency = 100ms;
 
 	auto start = std::chrono::system_clock::now();
 
@@ -104,12 +105,12 @@ int main(int ac, char * av[]) {
 			continue;
 		}
 
-		start = now;
-
 		int c = 0;
+
 		for(int i = 0; c < total && i < len; i++) {
-			unsigned char magU=floor(sqrt(imv[i].x_vector*imv[i].x_vector+imv[i].y_vector*imv[i].y_vector));
-			if(magU > magnitude) c++;
+			int magU = (int)imv[i].x_vector*(int)imv[i].x_vector+(int)imv[i].y_vector*(int)imv[i].y_vector;
+
+			if(magU > magnitude2) c++;
 		}
 		//cout << "mag: " << (int)c << endl;
 		if(c >= total) {
