@@ -12,6 +12,7 @@
 
 
 #include <X11/Xlib.h>
+#include <X11/extensions/dpms.h>
 
 using std::atomic_flag;
 using std::cerr;
@@ -183,6 +184,7 @@ public:
         cerr << "powering on" << endl;
         unique_lock<mutex> lock(m);
         XResetScreenSaver(dpy_);
+        DPMSForceLevel(dpy_, DPMSModeOn);
 
         if (!is_power_on)
         {
