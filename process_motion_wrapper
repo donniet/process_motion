@@ -1,4 +1,4 @@
 #!/bin/bash
 
-/usr/bin/raspivid -x >(/home/pi/src/process_motion/process_motion -m 60 -n 30) -t 0 -rot 90 -n -o /dev/null
+DISPLAY=:0 /usr/bin/raspivid -x >(/home/pi/src/process_motion/process_motion -m 60 -n 30) -t 0 -rot 90 -n -o /dev/null
 
