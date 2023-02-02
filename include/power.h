@@ -10,6 +10,9 @@
 #include <libcec/cec.h>
 #include <libcec/cecloader.h>
 
+
+#include <X11/Xlib.h>
+
 using std::atomic_flag;
 using std::cerr;
 using std::condition_variable;
@@ -38,6 +41,9 @@ private:
     std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>> standby_time;
     mutex m;
     condition_variable cv;
+
+
+    Display* dpy_;
 
     bool failed;
     std::thread power_off_thread;
@@ -121,6 +127,8 @@ private:
             throw string("could not open device");
         }
         addr = (cec_logical_address)0;
+
+        dpy_ = XOpenDisplay(NULL);
     }
 
     void power_off_func()
@@ -174,6 +182,7 @@ public:
     {
         cerr << "powering on" << endl;
         unique_lock<mutex> lock(m);
+        XResetScreenSaver(dpy_);
 
         if (!is_power_on)
         {
