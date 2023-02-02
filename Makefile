@@ -1,5 +1,5 @@
 CXXFLAGS=-std=c++14
-LDFLAGS=-lboost_program_options -lboost_thread -lboost_system -lcec -ldl -lpthread
+LDFLAGS=-lboost_program_options -lboost_thread -lboost_system -lcec -ldl -lOpenCL -lpthread
 SRC_DIRS ?= ./src ./include
 TARGET ?= process_motion
 
@@ -13,7 +13,7 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
 
 $(TARGET): $(OBJS)
-	$(CXX) $(LDFLAGS) $(OBJS) -o $@
+	$(CXX) $(OBJS) $(LDFLAGS) -o $@
 
 .PHONY: clean
 

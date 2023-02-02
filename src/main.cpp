@@ -2,10 +2,12 @@
 
 #include <boost/program_options.hpp>
 #include <boost/asio.hpp>
+#include <boost/compute.hpp>
 
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <stdint.h>
 
 #include <math.h>
 
@@ -13,6 +15,7 @@ using namespace std::literals::chrono_literals;
 
 using namespace boost::program_options;
 using namespace boost::asio;
+using namespace boost;
 using std::string;
 using std::cin;
 using std::cout;
@@ -21,10 +24,17 @@ using std::endl;
 
 
 struct motion_vector {
-	signed char x_vector;
-	signed char y_vector;
-	short sad;
+	int8_t x_vector;
+	int8_t y_vector;
+	int16_t sad;
 };
+
+
+BOOST_COMPUTE_ADAPT_STRUCT(motion_vector, motion_vector, (x_vector, y_vector, sad))
+
+BOOST_COMPUTE_FUNCTION(int, vector_length, (motion_vector a), \
+	return int(a.x_vector) * int(a.x_vector) + int(a.y_vector) * int(a.y_vector); \
+);
 
 int mbx = 120;
 int mby = 68;
@@ -79,6 +89,10 @@ int main(int ac, char * av[]) {
 	socket.open(ip::udp::v4());
 	remote_endpoint = ip::udp::endpoint(ip::address::from_string(remote), remote_port);
 
+	compute::device device = compute::system::default_device();
+	compute::context context(device);
+	compute::command_queue queue(context, device);	
+
 	Power power;
 
 	if (test) {
@@ -94,24 +108,31 @@ int main(int ac, char * av[]) {
 	auto bytes = len * sizeof(motion_vector);
 	auto imv = new motion_vector[len];
 
+	compute::mapped_view<motion_vector> imv_view(imv, len, context);
+	compute::vector<int> counts(len, context);
+
 	auto sampling_frequency = 100ms;
 
 	auto start = std::chrono::system_clock::now();
 
+	using compute::_1;
+	using compute::_2;
+
 	while(cin.read(reinterpret_cast<char*>(imv), bytes)) {
 		auto now = std::chrono::system_clock::now();
 
-		if (now - start < sampling_frequency) {
-			continue;
-		}
+		// if (now - start < sampling_frequency) {
+		// 	continue;
+		// }
 
-		int c = 0;
+		compute::transform(imv_view.begin(), imv_view.end(), counts.begin(), vector_length);
+		int c = compute::accumulate(counts.begin(), counts.end(), 0, _1 + _2);
 
-		for(int i = 0; c < total && i < len; i++) {
-			int magU = (int)imv[i].x_vector*(int)imv[i].x_vector+(int)imv[i].y_vector*(int)imv[i].y_vector;
+		// for(int i = 0; c < total && i < len; i++) {
+		// 	int magU = (int)imv[i].x_vector*(int)imv[i].x_vector+(int)imv[i].y_vector*(int)imv[i].y_vector;
 
-			if(magU > magnitude2) c++;
-		}
+		// 	if(magU > magnitude2) c++;
+		// }
 		//cout << "mag: " << (int)c << endl;
 		if(c >= total) {
 			send_motion_detect(socket, c);
