@@ -51,6 +51,7 @@ string remote = "127.0.0.1";
 int remote_port = 5555;
 bool test = false;
 ip::udp::endpoint remote_endpoint;
+std::chrono::duration<double> standby_time = 10s;
 
 struct motion_detect_packet {
 	int magnitude;
@@ -69,6 +70,27 @@ void send_motion_detect(ip::udp::socket & sock, int magnitude) {
 	}
 }
 
+namespace std { namespace chrono {
+    std::wistream& operator>>(std::wistream& is, std::chrono::duration<double>& v) {
+        int seconds;
+        is >> seconds;
+        v = std::chrono::seconds(seconds);
+        return is;
+    }
+    std::wostream& operator<<(std::wostream& os, const std::chrono::duration<double>& v) {
+        return os << v.count();
+    }
+    std::istream& operator>>(std::istream& is, std::chrono::duration<double>& v) {
+        int seconds;
+        is >> seconds;
+        v = std::chrono::seconds(seconds);
+        return is;
+    }
+    std::ostream& operator<<(std::ostream& os, const std::chrono::duration<double>& v) {
+        return os << v.count();
+    }
+}}
+
 int main(int ac, char * av[]) {
 	options_description desc{"Options"};
 	desc.add_options()
@@ -80,6 +102,7 @@ int main(int ac, char * av[]) {
 		("remote,r", value<string>(&remote)->default_value("127.0.0.1"), "remote udp address for sending motion detection packets")
 		("port,p", value<int>(&remote_port)->default_value(5555), "remote udp port")
 		("test,t", bool_switch(&test)->default_value(false), "send test udp motion packet")
+        ("standby,s",  value<std::chrono::duration<double>>(&standby_time)->default_value(10s), "time to wait before putting monitor into standby mode")
 	;
 
 	variables_map vm;
@@ -102,7 +125,7 @@ int main(int ac, char * av[]) {
 	compute::command_queue queue(context, device);	
 #endif
 
-	Power power;
+	Power power(standby_time);
 
 	if (test) {
 		send_motion_detect(socket, 70);
