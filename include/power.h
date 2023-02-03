@@ -186,8 +186,10 @@ public:
 
     void motion_detected() 
     {
-        XTestFakeRelativeMotionEvent(dpy_, 0, 1, 0);
-        XFlush(dpy_);
+        if(dpy_ != nullptr) {
+            XTestFakeRelativeMotionEvent(dpy_, 0, 1, 1);
+            XFlush(dpy_);
+        }
     }
 
     void power_on()
