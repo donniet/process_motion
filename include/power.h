@@ -13,6 +13,9 @@
 
 #include <X11/Xlib.h>
 #include <X11/extensions/dpms.h>
+#include <X11/extensions/XTest.h>
+
+#include <unistd.h>
 
 using std::atomic_flag;
 using std::cerr;
@@ -181,19 +184,31 @@ public:
         init();
     }
 
+    void motion_detected() 
+    {
+        XTestFakeRelativeMotionEvent(dpy_, 0, 1, 0);
+        XFlush(dpy_);
+    }
+
     void power_on()
     {
         cerr << "powering on" << endl;
+        motion_detected();
+
         unique_lock<mutex> lock(m);
-        XResetScreenSaver(dpy_);
+        // XResetScreenSaver(dpy_);
 
         if (!is_power_on)
         {
             cerr << "sending powerOnDevices" << endl;
-            is_power_on = g_parser->PowerOnDevices(addr);
+            g_parser->PowerOnDevices(addr);
+            
+            is_power_on = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
         }
 
-        standby_time = std::chrono::system_clock::now() + standby;
+        if (is_power_on) 
+            standby_time = std::chrono::system_clock::now() + standby;
+
         lock.unlock();
         cv.notify_one();
     }
