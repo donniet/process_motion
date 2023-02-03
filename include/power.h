@@ -131,6 +131,7 @@ private:
 
         dpy_ = XOpenDisplay(NULL);
         DPMSDisable(dpy_);
+        XSetScreenSaver(dpy_, 1+(int)standby.count(), 1+(int)standby.count(), PreferBlanking, NoExpose);
     }
 
     void power_off_func()
