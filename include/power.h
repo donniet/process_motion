@@ -179,12 +179,19 @@ public:
         init();
     }
 
+    void dpms_power_on() {
+        BOOL on;
+        CARD16 state;
+        DPMSInfo(dpy_, &state, &on);
+        if (!on) DPMSForceLevel(dpy_, DPMSModeOn);
+    }
+
     void power_on()
     {
         cerr << "powering on" << endl;
         unique_lock<mutex> lock(m);
         XResetScreenSaver(dpy_);
-        DPMSForceLevel(dpy_, DPMSModeOn);
+        dpms_power_on();
 
         if (!is_power_on)
         {
