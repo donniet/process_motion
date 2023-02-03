@@ -47,7 +47,7 @@ private:
     condition_variable cv;
 
 
-    Display* dpy_;
+    // Display* dpy_;
 
     bool failed;
     std::thread power_off_thread;
@@ -132,9 +132,10 @@ private:
         }
         addr = (cec_logical_address)0;
 
-        dpy_ = XOpenDisplay(NULL);
-        DPMSDisable(dpy_);
-        XSetScreenSaver(dpy_, 1+(int)standby.count(), 1+(int)standby.count(), PreferBlanking, NoExpose);
+        // dpy_ = XOpenDisplay(NULL);
+        // DPMSDisable(dpy_);
+        // cerr << "setting screensaver: " << 1+(int)standby.count() << endl;
+        // XSetScreenSaver(dpy_, 1+(int)standby.count(), 1+(int)standby.count(), 1, 1);
     }
 
     void power_off_func()
@@ -186,10 +187,11 @@ public:
 
     void motion_detected() 
     {
-        if(dpy_ != nullptr) {
-            XTestFakeRelativeMotionEvent(dpy_, 0, 1, 1);
-            XFlush(dpy_);
-        }
+        // if(dpy_ != nullptr) {
+        //     // XTestFakeRelativeMotionEvent(dpy_, 0, 1, 1);
+        //     // XFlush(dpy_);
+        //     XResetScreenSaver(dpy_);
+        // }
     }
 
     void power_on()
