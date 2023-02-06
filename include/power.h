@@ -27,6 +27,7 @@ using std::string;
 using std::unique_lock;
 
 using namespace CEC;
+using namespace std::chrono_literals;
 
 const char *DEFAULT_DEVICE_NAME = "Smart Mirror";
 
@@ -40,9 +41,12 @@ private:
     string device_name;
     cec_logical_address addr; // = (cec_logical_address)0;
     bool verbose;
-    bool is_power_on;
+    bool is_power_on_;
     std::chrono::duration<double> standby;
+    std::chrono::duration<double> wakeup_interval;
+    std::chrono::duration<double> wakeup_timeout;
     std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>> standby_time;
+    std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>> last_on_time;
     mutex m;
     condition_variable cv;
 
@@ -146,16 +150,27 @@ private:
                               { return failed; }))
         {
             cerr << "in power_off loop" << endl;
-            if (standby_time <= std::chrono::system_clock::now())
+            auto now = std::chrono::system_clock::now();
+
+            if (standby_time <= now)
             {
                 cerr << "standby time expired" << endl;
-                if (is_power_on)
+                if (is_power_on_)
                 {
                     cerr << "powering off" << endl;
                     g_parser->StandbyDevices(addr);
-                    is_power_on = false;
-                }
-                standby_time = std::chrono::system_clock::now() + standby;
+                    is_power_on_ = false;
+                } 
+                standby_time = now + standby;
+            } 
+            else if(!is_power_on_ && now - last_on_time > wakeup_interval)
+            {
+                cerr << "wakeup interval expired, waking up" << endl;
+                g_parser->PowerOnDevices(addr);
+                std::this_thread::sleep_for(2s);
+                is_power_on_ = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
+                last_on_time = now;
+                standby_time = now + 10s;
             }
         }
     }
@@ -165,9 +180,12 @@ public:
         : device_name(DEFAULT_DEVICE_NAME),
           verbose(true),
           failed(false),
-          is_power_on(false),
-          standby(600.),
+          is_power_on_(false),
+          standby(600s),
+          wakeup_interval(3600s),
+          wakeup_timeout(10s),
           standby_time(std::chrono::system_clock::now()),
+          last_on_time(std::chrono::system_clock::now()),
           power_off_thread(&Power::power_off_func, this)
     {
         init();
@@ -177,9 +195,12 @@ public:
         : device_name(DEFAULT_DEVICE_NAME),
           verbose(true),
           failed(false),
-          is_power_on(false),
+          is_power_on_(false),
           standby(standby),
+          wakeup_interval(3600s),
+          wakeup_timeout(10s),
           standby_time(std::chrono::system_clock::now()),
+          last_on_time(std::chrono::system_clock::now()),
           power_off_thread(&Power::power_off_func, this)
     {
         init();
@@ -194,6 +215,12 @@ public:
         // }
     }
 
+    bool is_power_on()
+    {
+        unique_lock<mutex> lock(m);
+        return is_power_on_;
+    }
+
     void power_on()
     {
         cerr << "powering on" << endl;
@@ -202,16 +229,18 @@ public:
         unique_lock<mutex> lock(m);
         // XResetScreenSaver(dpy_);
 
-        if (!is_power_on)
+        if (!is_power_on_)
         {
             cerr << "sending powerOnDevices" << endl;
             g_parser->PowerOnDevices(addr);
-            
-            is_power_on = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
+            std::this_thread::sleep_for(2s);
+            is_power_on_ = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
         }
 
-        if (is_power_on) 
+        if (is_power_on_) {
             standby_time = std::chrono::system_clock::now() + standby;
+            last_on_time = std::chrono::system_clock::now();
+        }
 
         lock.unlock();
         cv.notify_one();
