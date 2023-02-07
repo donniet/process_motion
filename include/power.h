@@ -146,8 +146,12 @@ private:
     {
         unique_lock<mutex> lock(m);
 
-        while (!cv.wait_until(lock, standby_time, [&]{ return failed; }))
-        {
+
+        for(;;) {
+            cv.wait_until(lock, standby_time);
+
+            if(failed) break;
+
             cerr << "in power_off loop" << endl;
             auto now = std::chrono::system_clock::now();
 
