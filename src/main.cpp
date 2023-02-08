@@ -177,7 +177,11 @@ int main(int ac, char * av[]) {
 		std::transform(counts, counts + len, counts, [magnitude2](int a) -> int {
 			return a > magnitude2 ? 1 : 0;
 		});
-		c = std::reduce(counts, counts + len, 0, std::plus<int>());
+        
+		//c = std::reduce(counts, counts + len, 0, std::plus<int>());
+        // c = std::accumulate(counts, counts + len, 0, std::plus<int>());
+
+
 #endif
 		// for(int i = 0; c < total && i < len; i++) {
 		// 	int magU = (int)imv[i].x_vector*(int)imv[i].x_vector+(int)imv[i].y_vector*(int)imv[i].y_vector;

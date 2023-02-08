@@ -234,6 +234,9 @@ public:
         unique_lock<mutex> lock(m);
         // XResetScreenSaver(dpy_);
 
+        is_power_on_ = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
+        
+
         if (!is_power_on_)
         {
             cerr << "sending powerOnDevices" << endl;
