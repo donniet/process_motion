@@ -178,7 +178,7 @@ int main(int ac, char * av[]) {
 			return a > magnitude2 ? 1 : 0;
 		});
         
-		//c = std::reduce(counts, counts + len, 0, std::plus<int>());
+		c = std::reduce(counts, counts + len, 0, std::plus<int>());
         // c = std::accumulate(counts, counts + len, 0, std::plus<int>());
 
 
