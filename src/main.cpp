@@ -55,7 +55,7 @@ ip::udp::endpoint remote_endpoint;
 std::chrono::duration<double> standby_time = 300s;
 
 struct motion_detect_packet {
-	int magnitude;
+	int32_t magnitude;
 };
 
 void send_motion_detect(ip::udp::socket & sock, int magnitude) {
@@ -72,22 +72,22 @@ void send_motion_detect(ip::udp::socket & sock, int magnitude) {
 }
 
 namespace std { namespace chrono {
-    std::wistream& operator>>(std::wistream& is, std::chrono::duration<double>& v) {
+    std::wistream& operator>>(std::wistream& is, duration<double>& v) {
         int seconds;
         is >> seconds;
-        v = std::chrono::seconds(seconds);
+        v = seconds(seconds);
         return is;
     }
-    std::wostream& operator<<(std::wostream& os, const std::chrono::duration<double>& v) {
+    std::wostream& operator<<(std::wostream& os, const duration<double>& v) {
         return os << v.count();
     }
-    std::istream& operator>>(std::istream& is, std::chrono::duration<double>& v) {
+    std::istream& operator>>(std::istream& is, duration<double>& v) {
         int seconds;
         is >> seconds;
-        v = std::chrono::seconds(seconds);
+        v = seconds(seconds);
         return is;
     }
-    std::ostream& operator<<(std::ostream& os, const std::chrono::duration<double>& v) {
+    std::ostream& operator<<(std::ostream& os, const duration<double>& v) {
         return os << v.count();
     }
 }}
@@ -172,10 +172,7 @@ int main(int ac, char * av[]) {
 #else
 		std::transform(imv, imv + len, counts, [](motion_vector const & a) -> int {
 			int x = a.x_vector, y = a.y_vector;
-			return x * x + y * y;
-		});
-		std::transform(counts, counts + len, counts, [magnitude2](int a) -> int {
-			return a > magnitude2 ? 1 : 0;
+			return x * x + y * y > magnitude2 ? 1 : 0;
 		});
         
 		c = std::reduce(counts, counts + len, 0, std::plus<int>());
