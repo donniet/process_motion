@@ -142,7 +142,9 @@ int main(int ac, char * av[]) {
 	auto imv = new motion_vector[len];
 
 #ifdef USE_OPENCL
+	auto length = new float[len];
 	compute::mapped_view<motion_vector> imv_view(imv, len, context);
+	compute::mapped_view<float> length_view(length, len, context);
 	compute::vector<int> counts(len, context);
 
 	using compute::_1;
@@ -166,8 +168,8 @@ int main(int ac, char * av[]) {
 		int c = 0;
 
 #ifdef USE_OPENCL
-		compute::transform(imv_view.begin(), imv_view.end(), counts.begin(), vector_length);
-		compute::transform(counts.begin(), counts.end(), counts.begin(), _1 > magnitude2 ? 1 : 0);
+		compute::transform(imv_view.begin(), imv_view.end(), length_view.begin(), vector_length);
+		compute::transform(length_view.begin(), length_view.end(), counts.begin(), _1 > magnitude2 ? 1 : 0);
 		c = compute::accumulate(counts.begin(), counts.end(), 0, _1 + _2);
 #else
 		std::transform(imv, imv + len, counts, [](motion_vector const & a) -> int {
@@ -196,7 +198,9 @@ int main(int ac, char * av[]) {
 
 	delete [] imv;
 
-#ifndef USE_OPENCL
+#ifdef USE_OPENCL
+	delete [] length;
+#else
 	delete [] counts;
 #endif
 

@@ -74,8 +74,25 @@ private:
     {
         unique_lock<mutex> lock(m);
 
+        
+
         switch (type)
         {
+        case CEC_ALERT_SERVICE_DEVICE:
+            cerr << "ALERT: service device: " << param << endl;
+            break;
+        case CEC_ALERT_PERMISSION_ERROR:
+            cerr << "ALERT: permission error: " << param << endl;
+            break;
+        case CEC_ALERT_PORT_BUSY:
+            cerr << "ALERT: port busy: " << param << endl;
+            break;
+        case CEC_ALERT_PHYSICAL_ADDRESS_ERROR:
+            cerr << "ALERT: physical address error: " << param << endl;
+            break;
+        case CEC_ALERT_TV_POLL_FAILED:
+            cerr << "ALERT: tv poll failed: " << param << endl;
+            break;
         case CEC_ALERT_CONNECTION_LOST:
             cerr << "connection lost, trying to reconnect\n"
                  << endl;
