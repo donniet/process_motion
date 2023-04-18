@@ -172,7 +172,7 @@ int main(int ac, char * av[]) {
 		compute::transform(length_view.begin(), length_view.end(), counts.begin(), _1 > magnitude2 ? 1 : 0);
 		c = compute::accumulate(counts.begin(), counts.end(), 0, _1 + _2);
 #else
-		std::transform(imv, imv + len, counts, [](motion_vector const & a) -> int {
+		std::transform(imv, imv + len, counts, [magnitude2](motion_vector const & a) -> int {
 			int x = a.x_vector, y = a.y_vector;
 			return x * x + y * y > magnitude2 ? 1 : 0;
 		});
