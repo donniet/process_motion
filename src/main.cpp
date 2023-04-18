@@ -73,18 +73,18 @@ void send_motion_detect(ip::udp::socket & sock, int magnitude) {
 
 namespace std { namespace chrono {
     std::wistream& operator>>(std::wistream& is, duration<double>& v) {
-        int seconds;
-        is >> seconds;
-        v = seconds(seconds);
+        int secs;
+        is >> secs;
+        v = seconds(secs);
         return is;
     }
     std::wostream& operator<<(std::wostream& os, const duration<double>& v) {
         return os << v.count();
     }
     std::istream& operator>>(std::istream& is, duration<double>& v) {
-        int seconds;
-        is >> seconds;
-        v = seconds(seconds);
+        int secs;
+        is >> secs;
+        v = seconds(secs);
         return is;
     }
     std::ostream& operator<<(std::ostream& os, const duration<double>& v) {
