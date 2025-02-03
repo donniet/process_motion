@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <mutex>
+#include <algorithm>
 
 #include <libcec/cec.h>
 #include <libcec/cecloader.h>
@@ -16,6 +17,10 @@
 #include <X11/extensions/XTest.h>
 
 #include <unistd.h>
+
+#include <functional>
+
+using std::function;
 
 using std::atomic_flag;
 using std::cerr;
@@ -31,6 +36,19 @@ using namespace std::chrono_literals;
 
 const char *DEFAULT_DEVICE_NAME = "Smart Mirror";
 
+struct Defer {
+    std::function<void()> _defered;
+    Defer(std::function<void()> defered) : _defered(defered) { }
+    Defer() : _defered() { }
+    Defer & operator=(std::function<void()> defered)
+    {
+        _defered();
+        _defered = defered;
+        return *this;
+    }
+    ~Defer() { _defered(); }
+};
+
 class Power
 {
 private:
@@ -41,7 +59,6 @@ private:
     string device_name;
     cec_logical_address addr; // = (cec_logical_address)0;
     bool verbose;
-    bool is_power_on_;
     std::chrono::duration<double> standby;
     std::chrono::duration<double> wakeup_interval;
     std::chrono::duration<double> wakeup_timeout;
@@ -113,7 +130,8 @@ private:
     void init()
     {
         g_config.Clear();
-        snprintf(g_config.strDeviceName, device_name.length() + 1, device_name.c_str());
+        size_t max_name_length = sizeof(g_config.strDeviceName) / sizeof(g_config.strDeviceName[0]) - 1;
+        strncpy(g_config.strDeviceName, device_name.c_str(), max_name_length);
         g_config.clientVersion = LIBCEC_VERSION_CURRENT;
         g_config.bActivateSource = 1;
         if (verbose)
@@ -143,7 +161,7 @@ private:
         cout << "devices found:\n";
         for (int i = 0; i < iDevicesFound; i++)
         {
-            cout << devices[i].strComName << endl;
+            cout << "COM Name: " << devices[i].strComName << endl;
         }
         g_port = devices[0].strComName;
         if (!g_parser->Open(g_port.c_str()))
@@ -151,12 +169,27 @@ private:
             failed = true;
             throw string("could not open device");
         }
+        
         addr = (cec_logical_address)0;
 
         // dpy_ = XOpenDisplay(NULL);
         // DPMSDisable(dpy_);
         // cerr << "setting screensaver: " << 1+(int)standby.count() << endl;
         // XSetScreenSaver(dpy_, 1+(int)standby.count(), 1+(int)standby.count(), 1, 1);
+    }
+
+    void do_power_off() 
+    {
+        init();
+        g_parser->StandbyDevices(addr);
+        UnloadLibCec(g_parser);
+    }
+
+    void do_power_on()
+    {
+        init();
+        g_parser->PowerOnDevices(addr);
+        UnloadLibCec(g_parser);
     }
 
     void power_off_func()
@@ -175,20 +208,17 @@ private:
             if (standby_time <= now)
             {
                 cerr << "standby time expired" << endl;
-                if (is_power_on_)
+                if (is_power_on())
                 {
                     cerr << "powering off" << endl;
-                    g_parser->StandbyDevices(addr);
-                    is_power_on_ = false;
+                    do_power_off();
                 } 
                 standby_time = now + standby;
             } 
-            else if(!is_power_on_ && now - last_on_time > wakeup_interval)
+            else if(!is_power_on() && now - last_on_time > wakeup_interval)
             {
                 cerr << "wakeup interval expired, waking up" << endl;
-                g_parser->PowerOnDevices(addr);
-                std::this_thread::sleep_for(2s);
-                is_power_on_ = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
+                do_power_on();
                 last_on_time = now;
                 standby_time = now + 10s;
             }
@@ -202,7 +232,6 @@ public:
         : device_name(DEFAULT_DEVICE_NAME),
           verbose(true),
           failed(false),
-          is_power_on_(false),
           standby(600s),
           wakeup_interval(3600s),
           wakeup_timeout(10s),
@@ -210,14 +239,13 @@ public:
           last_on_time(std::chrono::system_clock::now()),
           power_off_thread(&Power::power_off_func, this)
     {
-        init();
+        // init();
     }
 
     Power(std::chrono::duration<double> standby)
         : device_name(DEFAULT_DEVICE_NAME),
           verbose(true),
           failed(false),
-          is_power_on_(false),
           standby(standby),
           wakeup_interval(3600s),
           wakeup_timeout(10s),
@@ -225,55 +253,29 @@ public:
           last_on_time(std::chrono::system_clock::now()),
           power_off_thread(&Power::power_off_func, this)
     {
-        init();
+        // init();
     }
 
-    void motion_detected() 
-    {
-        // if(dpy_ != nullptr) {
-        //     // XTestFakeRelativeMotionEvent(dpy_, 0, 1, 1);
-        //     // XFlush(dpy_);
-        //     XResetScreenSaver(dpy_);
-        // }
-    }
-
+private:
+    // must be called with a lock
     bool is_power_on()
     {
-        unique_lock<mutex> lock(m);
-        return is_power_on_;
-    }
+        init();
+        Defer unload([&](){ 
+            UnloadLibCec(g_parser); 
+        });
 
-    void power_on()
+        auto ret = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
+        // UnloadLibCec(g_parser);
+        return ret;
+    }
+public:
+    void power_on() 
     {
-        cerr << "powering on" << endl;
-        motion_detected();
-
         unique_lock<mutex> lock(m);
-        // XResetScreenSaver(dpy_);
-
-        is_power_on_ = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
-        
-
-        if (!is_power_on_)
-        {
-            cerr << "sending powerOnDevices" << endl;
-            g_parser->PowerOnDevices(addr);
-            std::this_thread::sleep_for(2s);
-            is_power_on_ = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
-        }
-
-        if (is_power_on_) {
-            standby_time = std::chrono::system_clock::now() + standby;
-            last_on_time = std::chrono::system_clock::now();
-        }
-
-        lock.unlock();
-        cv.notify_one();
+        do_power_on();
     }
-    string get_port() const
-    {
-        return g_port;
-    }
+
     bool is_fail()
     {
         unique_lock<mutex> lock(m);
@@ -282,7 +284,6 @@ public:
     ~Power()
     {
         unique_lock<mutex> lock(m);
-        UnloadLibCec(g_parser);
         failed = true;
         cv.notify_all();
         power_off_thread.join();
