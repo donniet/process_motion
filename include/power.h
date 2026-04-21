@@ -7,14 +7,10 @@
 #include <chrono>
 #include <mutex>
 #include <algorithm>
+#include <optional>
 
 #include <libcec/cec.h>
 #include <libcec/cecloader.h>
-
-
-#include <X11/Xlib.h>
-#include <X11/extensions/dpms.h>
-#include <X11/extensions/XTest.h>
 
 #include <unistd.h>
 
@@ -67,6 +63,8 @@ private:
     mutex m;
     condition_variable cv;
 
+    std::optional< bool > last_power_status;
+
 
     // Display* dpy_;
 
@@ -90,8 +88,6 @@ private:
     void CecAlert(void *cbParam, const libcec_alert type, const libcec_parameter param)
     {
         unique_lock<mutex> lock(m);
-
-        
 
         switch (type)
         {
@@ -198,6 +194,12 @@ private:
         close();
     }
 
+    bool cec_power_status()
+    {
+        return ( CEC::CEC_POWER_STATUS_ON == 
+                g_parser->GetDevicePowerStatus(addr) );
+    }
+
     void power_off_func()
     {
         unique_lock<mutex> lock(m);
@@ -212,20 +214,19 @@ private:
             cerr << "in power_off loop" << endl;
             auto now = std::chrono::system_clock::now();
 
-            bool is_power_on = ( CEC::CEC_POWER_STATUS_ON == 
-                g_parser->GetDevicePowerStatus(addr) );
+            last_power_status = cec_power_status();
 
             if (standby_time <= now)
             {
                 cerr << "standby time expired" << endl;
-                if (is_power_on)
+                if( *last_power_status )
                 {
                     cerr << "powering off" << endl;
                     g_parser->StandbyDevices(addr);
                 } 
                 standby_time = now + standby;
             } 
-            else if(!is_power_on && now - last_on_time > wakeup_interval)
+            else if( !*last_power_status && now - last_on_time > wakeup_interval)
             {
                 cerr << "wakeup interval expired, waking up" << endl;
                 
@@ -245,6 +246,7 @@ public:
         : device_name(DEFAULT_DEVICE_NAME),
           verbose(true),
           failed(false),
+          last_power_status(false),
           standby(600s),
           wakeup_interval(3600s),
           wakeup_timeout(10s),
@@ -274,7 +276,8 @@ public:
     void power_on() 
     {
         unique_lock<mutex> lock(m);
-        do_power_on();
+        if ( !last_power_status.value_or( false ))
+            do_power_on();
     }
 
     bool is_fail()
