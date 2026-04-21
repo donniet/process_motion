@@ -127,7 +127,7 @@ private:
         }
     }
 
-    void init()
+    void open()
     {
         g_config.Clear();
         size_t max_name_length = sizeof(g_config.strDeviceName) / sizeof(g_config.strDeviceName[0]) - 1;
@@ -152,7 +152,7 @@ private:
 
         g_parser->InitVideoStandalone();
         cec_adapter_descriptor devices[10];
-        uint8_t iDevicesFound = g_parser->DetectAdapters(devices, 10, NULL, true);
+        uint8_t iDevicesFound = g_parser->DetectAdapters(devices, 10, NULL, false);
         if (iDevicesFound <= 0)
         {
             failed = true;
@@ -178,50 +178,63 @@ private:
         // XSetScreenSaver(dpy_, 1+(int)standby.count(), 1+(int)standby.count(), 1, 1);
     }
 
+    void close()
+    {
+        g_parser->Close();
+        UnloadLibCec( g_parser );
+    }
+
     void do_power_off() 
     {
-        init();
+        open();
         g_parser->StandbyDevices(addr);
-        UnloadLibCec(g_parser);
+        close();
     }
 
     void do_power_on()
     {
-        init();
+        open();
         g_parser->PowerOnDevices(addr);
-        UnloadLibCec(g_parser);
+        close();
     }
 
     void power_off_func()
     {
         unique_lock<mutex> lock(m);
 
-
         for(;;) {
             cv.wait_until(lock, standby_time);
 
-            if(failed) break;
+            open();
+            if(failed) 
+                break;
 
             cerr << "in power_off loop" << endl;
             auto now = std::chrono::system_clock::now();
 
+            bool is_power_on = ( CEC::CEC_POWER_STATUS_ON == 
+                g_parser->GetDevicePowerStatus(addr) );
+
             if (standby_time <= now)
             {
                 cerr << "standby time expired" << endl;
-                if (is_power_on())
+                if (is_power_on)
                 {
                     cerr << "powering off" << endl;
-                    do_power_off();
+                    g_parser->StandbyDevices(addr);
                 } 
                 standby_time = now + standby;
             } 
-            else if(!is_power_on() && now - last_on_time > wakeup_interval)
+            else if(!is_power_on && now - last_on_time > wakeup_interval)
             {
                 cerr << "wakeup interval expired, waking up" << endl;
-                do_power_on();
+                
+                g_parser->PowerOnDevices(addr);
                 last_on_time = now;
                 standby_time = now + 10s;
             }
+
+            close();
         }
 
         cerr << "exiting power_off loop" << endl;
@@ -256,19 +269,7 @@ public:
         // init();
     }
 
-private:
-    // must be called with a lock
-    bool is_power_on()
-    {
-        init();
-        Defer unload([&](){ 
-            UnloadLibCec(g_parser); 
-        });
 
-        auto ret = CEC::CEC_POWER_STATUS_ON == g_parser->GetDevicePowerStatus(addr);
-        // UnloadLibCec(g_parser);
-        return ret;
-    }
 public:
     void power_on() 
     {
