@@ -1,5 +1,5 @@
 CXXFLAGS=-std=c++17
-LDFLAGS=-lboost_program_options -lboost_thread -lboost_system -lcec -ldl -lX11 -lXext -lXtst -lpthread -lstdc++
+LDFLAGS=-lboost_program_options -lboost_thread -lboost_system -lcec -ldl -lpthread -lstdc++
 SRC_DIRS ?= ./src ./include
 TARGET ?= process_motion
 

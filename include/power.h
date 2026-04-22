@@ -183,21 +183,24 @@ private:
     void do_power_off() 
     {
         open();
-        g_parser->StandbyDevices(addr);
+        if( g_parser->StandbyDevices(addr) )
+            last_power_status = false;
         close();
     }
 
     void do_power_on()
     {
         open();
-        g_parser->PowerOnDevices(addr);
+        if( g_parser->PowerOnDevices(addr) )
+            last_power_status = true;
         close();
     }
 
     bool cec_power_status()
     {
-        return ( CEC::CEC_POWER_STATUS_ON == 
+        last_power_status = ( CEC::CEC_POWER_STATUS_ON == 
                 g_parser->GetDevicePowerStatus(addr) );
+        return *last_power_status;
     }
 
     void power_off_func()
@@ -214,19 +217,19 @@ private:
             cerr << "in power_off loop" << endl;
             auto now = std::chrono::system_clock::now();
 
-            last_power_status = cec_power_status();
+            bool is_power_on = cec_power_status();
 
             if (standby_time <= now)
             {
                 cerr << "standby time expired" << endl;
-                if( *last_power_status )
+                if( is_power_on )
                 {
                     cerr << "powering off" << endl;
                     g_parser->StandbyDevices(addr);
                 } 
                 standby_time = now + standby;
             } 
-            else if( !*last_power_status && now - last_on_time > wakeup_interval)
+            else if( !is_power_on && now - last_on_time > wakeup_interval)
             {
                 cerr << "wakeup interval expired, waking up" << endl;
                 
@@ -246,7 +249,7 @@ public:
         : device_name(DEFAULT_DEVICE_NAME),
           verbose(true),
           failed(false),
-          last_power_status(false),
+          last_power_status{},
           standby(600s),
           wakeup_interval(3600s),
           wakeup_timeout(10s),
@@ -257,19 +260,8 @@ public:
         // init();
     }
 
-    Power(std::chrono::duration<double> standby)
-        : device_name(DEFAULT_DEVICE_NAME),
-          verbose(true),
-          failed(false),
-          standby(standby),
-          wakeup_interval(3600s),
-          wakeup_timeout(10s),
-          standby_time(std::chrono::system_clock::now()),
-          last_on_time(std::chrono::system_clock::now()),
-          power_off_thread(&Power::power_off_func, this)
-    {
-        // init();
-    }
+    Power(std::chrono::duration<double> standby): Power()
+    { this->standby = standby; }
 
 
 public:
