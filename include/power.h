@@ -246,7 +246,7 @@ private:
                 
                 g_parser->PowerOnDevices(addr);
                 last_on_time = now;
-                standby_time = now + 10s;
+                standby_time = now + wakeup_timeout;
             }
 
             close();
@@ -264,7 +264,7 @@ public:
           standby(600s),
           wakeup_interval(3600s),
           wakeup_timeout(10s),
-          standby_time(std::chrono::system_clock::now()),
+          standby_time(std::chrono::system_clock::now() + wakeup_timeout),
           last_on_time(std::chrono::system_clock::now()),
           power_off_thread(&Power::power_off_func, this)
     {
