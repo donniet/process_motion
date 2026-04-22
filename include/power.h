@@ -198,9 +198,20 @@ private:
 
     bool cec_power_status()
     {
-        last_power_status = ( CEC::CEC_POWER_STATUS_ON == 
-                g_parser->GetDevicePowerStatus(addr) );
-        return *last_power_status;
+        auto power_status = g_parser->GetDevicePowerStatus(addr);
+        if( power_status == CEC::CEC_POWER_STATUS_ON || 
+            power_status == CEC::CEC_POWER_STATUS_IN_TRANSITION_STANDBY_TO_ON )
+        {
+            last_power_status = true;
+            return true;
+        }
+
+        if( power_status == CEC::CEC_POWER_STATUS_STANDBY )
+            last_power_status = false;
+        else
+            last_power_status.reset();
+
+        return false;
     }
 
     void power_off_func()
