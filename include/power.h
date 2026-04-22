@@ -279,8 +279,13 @@ public:
     void power_on() 
     {
         unique_lock<mutex> lock(m);
-        if ( !last_power_status.value_or( false ))
-            do_power_on();
+        if ( last_power_status.value_or( false ))
+        {
+            standby_time = std::chrono::system_clock::now() + wakeup_timeout;
+            return;
+        }
+
+        do_power_on();
     }
 
     bool is_fail()
