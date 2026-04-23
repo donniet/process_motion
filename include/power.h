@@ -205,18 +205,24 @@ private:
 
     void do_power_off() 
     {
+        using namespace std::chrono_literals;
+
         open();
         if( g_parser->StandbyDevices(addr) )
             last_power_status = false;
         close();
+        std::this_thread::sleep_for( 2s );
     }
 
     void do_power_on()
     {
+        using namespace std::chrono_literals;
+
         open();
         if( g_parser->PowerOnDevices(addr) )
             last_power_status = true;
         close();
+        std::this_thread::sleep_for( 2s );
     }
 
     bool cec_power_status()
