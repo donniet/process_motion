@@ -8,7 +8,7 @@
 
 struct Countdown
 {
-    using duration_type = std::chrono::duration< double >;
+    using duration_type = std::chrono::duration< float >;
     using clock_type = std::chrono::system_clock;
     using time_type = std::chrono::time_point< clock_type, duration_type >;
     using mutex_type = std::mutex;
