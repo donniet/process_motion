@@ -78,6 +78,8 @@ public:
     void power_on() 
     {
         timer.reset();
+        if( last_power_status.value_or( false ))
+            return;
         do_power_on();
     }
 
