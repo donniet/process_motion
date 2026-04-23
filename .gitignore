@@ -3,3 +3,5 @@ process_motion
 *.d
 *.swp
 *.data
+build/
+.vscode/

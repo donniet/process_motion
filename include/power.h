@@ -1,3 +1,7 @@
+#ifndef __POWER_H__
+#define __POWER_H__
+
+#include "countdown.hpp"
 
 #include <string>
 #include <iostream>
@@ -45,46 +49,66 @@ struct Defer {
     ~Defer() { _defered(); }
 };
 
-class Power
-{
+
+class Power {
+public:
+    Power()
+        : device_name(DEFAULT_DEVICE_NAME),
+          verbose(true),
+          failed(false),
+          timer{ Countdown::duration_type::max() },
+          power_off_thread(&Power::power_off_func, this)
+    {
+        // init();
+    }
+
+    Power( Countdown::duration_type standby ): Power()
+    { timer.reset( standby ); }
+
+    void stop()
+    { 
+        timer.stop(); 
+        cv.notify_all();
+        power_off_thread.join();
+    }
+
+    void power_on() 
+    {
+        timer.reset();
+        do_power_on();
+    }
+
+    bool is_fail()
+    {
+        unique_lock<mutex> lock(m);
+        return failed;
+    }
+    ~Power()
+    { stop(); }
+
 private:
-    libcec_configuration g_config;
-    ICECAdapter *g_parser;
-    ICECCallbacks g_callbacks;
-    std::string g_port;
-    string device_name;
-    cec_logical_address addr; // = (cec_logical_address)0;
-    bool verbose;
-    std::chrono::duration<double> standby;
-    std::chrono::duration<double> wakeup_interval;
-    std::chrono::duration<double> wakeup_timeout;
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>> standby_time;
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>> last_on_time;
-    mutex m;
-    condition_variable cv;
+    void power_off_func()
+    {
+        for(;;) {
+            cerr << "waiting for standby time" << endl;
+            timer.wait();
 
-    std::optional< bool > last_power_status;
+            unique_lock<mutex> lock(m);
+            do_power_off();
+        }
 
+        cerr << "exiting power_off loop" << endl;
+    }
 
-    // Display* dpy_;
-
-    bool failed;
-    std::thread power_off_thread;
-
-private:
     static void handleCecLogMessage(void *cbParam, const cec_log_message *message)
-    {
-        reinterpret_cast<Power *>(cbParam)->CecLogMessage(cbParam, message);
-    }
+    { reinterpret_cast<Power *>(cbParam)->CecLogMessage(cbParam, message); }
+
     void CecLogMessage(void *cbParam, const cec_log_message *message)
-    {
-        cerr << "CEC:" << message->message << endl;
-    }
+    { cerr << "CEC:" << message->message << endl; }
 
     static void handleCecAlert(void *cbParam, const libcec_alert type, const libcec_parameter param)
-    {
-        reinterpret_cast<Power *>(cbParam)->CecAlert(cbParam, type, param);
-    }
+    { reinterpret_cast<Power *>(cbParam)->CecAlert(cbParam, type, param); }
+
     void CecAlert(void *cbParam, const libcec_alert type, const libcec_parameter param)
     {
         unique_lock<mutex> lock(m);
@@ -167,11 +191,6 @@ private:
         }
         
         addr = (cec_logical_address)0;
-
-        // dpy_ = XOpenDisplay(NULL);
-        // DPMSDisable(dpy_);
-        // cerr << "setting screensaver: " << 1+(int)standby.count() << endl;
-        // XSetScreenSaver(dpy_, 1+(int)standby.count(), 1+(int)standby.count(), 1, 1);
     }
 
     void close()
@@ -214,90 +233,29 @@ private:
         return false;
     }
 
-    void power_off_func()
-    {
-        unique_lock<mutex> lock(m);
 
-        for(;;) {
-            cv.wait_until(lock, standby_time);
+private:
+    libcec_configuration g_config;
+    ICECAdapter *g_parser;
+    ICECCallbacks g_callbacks;
+    std::string g_port;
+    string device_name;
+    cec_logical_address addr; // = (cec_logical_address)0;
+    bool verbose;
 
-            open();
-            if(failed) 
-                break;
+    Countdown timer;
 
-            cerr << "in power_off loop" << endl;
-            auto now = std::chrono::system_clock::now();
+    Countdown::duration_type standby;
+    mutex m;
+    condition_variable cv;
 
-            bool is_power_on = cec_power_status();
-
-            if (standby_time <= now)
-            {
-                cerr << "standby time expired" << endl;
-                if( is_power_on )
-                {
-                    cerr << "powering off" << endl;
-                    g_parser->StandbyDevices(addr);
-                } 
-                standby_time = now + standby;
-            } 
-            else if( !is_power_on && now - last_on_time > wakeup_interval)
-            {
-                cerr << "wakeup interval expired, waking up" << endl;
-                
-                g_parser->PowerOnDevices(addr);
-                last_on_time = now;
-                standby_time = now + wakeup_timeout;
-            }
-
-            close();
-        }
-
-        cerr << "exiting power_off loop" << endl;
-    }
-
-public:
-    Power()
-        : device_name(DEFAULT_DEVICE_NAME),
-          verbose(true),
-          failed(false),
-          last_power_status{},
-          standby(600s),
-          wakeup_interval(3600s),
-          wakeup_timeout(10s),
-          standby_time(std::chrono::system_clock::now() + wakeup_timeout),
-          last_on_time(std::chrono::system_clock::now()),
-          power_off_thread(&Power::power_off_func, this)
-    {
-        // init();
-    }
-
-    Power(std::chrono::duration<double> standby): Power()
-    { this->standby = standby; }
+    std::optional< bool > last_power_status;
 
 
-public:
-    void power_on() 
-    {
-        unique_lock<mutex> lock(m);
-        if ( last_power_status.value_or( false ))
-        {
-            standby_time = std::chrono::system_clock::now() + wakeup_timeout;
-            return;
-        }
+    // Display* dpy_;
 
-        do_power_on();
-    }
-
-    bool is_fail()
-    {
-        unique_lock<mutex> lock(m);
-        return failed;
-    }
-    ~Power()
-    {
-        unique_lock<mutex> lock(m);
-        failed = true;
-        cv.notify_all();
-        power_off_thread.join();
-    }
+    bool failed;
+    std::thread power_off_thread;
 };
+
+#endif
