@@ -157,7 +157,7 @@ int main(int ac, char * av[]) {
 
 	auto start = std::chrono::system_clock::now();
 
-
+	cout << "beginning motion tracking loop..." << endl;
 	while(cin.read(reinterpret_cast<char*>(imv), bytes)) {
 		auto now = std::chrono::system_clock::now();
 
