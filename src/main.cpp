@@ -127,6 +127,7 @@ int main(int ac, char * av[]) {
 #endif
 	cout << "creating Power object" << endl;
 	Power power(standby_time);
+	cout << "Power object created" << endl;
 
 	if (test) {
 		send_motion_detect(socket, 70);
