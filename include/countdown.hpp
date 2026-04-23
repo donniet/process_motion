@@ -127,9 +127,9 @@ protected:
     {
         time_type my_expire_time;
 
-        lock_type lock{ _m };
         for(;;)
         {
+            lock_type lock{ _m };
             my_expire_time = _expire_time;
 
             _cv.wait_until( lock, my_expire_time, [this, my_expire_time]()
