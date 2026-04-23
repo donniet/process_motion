@@ -8,7 +8,7 @@ set(CMAKE_BIULD_TYPE Debug)
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 include_directories(include)
-link_libraries(pthread dl)
+add_link_options(-Wl,-Bdynamic -ldl -lpthread)
 
 add_executable(process_motion src/main.cpp)
 target_link_libraries(process_motion PRIVATE Boost::program_options cec)
