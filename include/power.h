@@ -92,6 +92,7 @@ private:
         for(;;) {
             cerr << "waiting for standby time" << endl;
             timer.wait();
+            cerr << "standby timeout reached, powering off." << endl;
 
             unique_lock<mutex> lock(m);
             do_power_off();
