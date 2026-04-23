@@ -58,12 +58,15 @@ public:
           failed(false),
           timer{ Countdown::duration_type::max() },
           power_off_thread(&Power::power_off_func, this)
-    {
-        // init();
-    }
+    { }
 
-    Power( Countdown::duration_type standby ): Power()
-    { timer.reset( standby ); }
+    Power( Countdown::duration_type standby ): 
+        device_name(DEFAULT_DEVICE_NAME),
+        verbose(true),
+        failed(false),
+        timer{standby},
+        power_off_thread(&Power::power_off_func,this)
+    { }
 
     void stop()
     { 

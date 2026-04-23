@@ -131,7 +131,7 @@ protected:
         {
             lock_type lock{ _m };
             my_expire_time = _expire_time;
-
+            
             _cv.wait_until( lock, my_expire_time, [this, my_expire_time]()
                 { return _stopped || my_expire_time != _expire_time; });
 
