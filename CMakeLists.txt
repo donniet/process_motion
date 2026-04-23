@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.10.0)
 project(process_motion VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_VERBOSE_MAKEFILE True)
+set(CMAKE_BIULD_TYPE Debug)
+
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 include_directories(include)
