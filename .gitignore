@@ -1,4 +1,6 @@
 process_motion
+log.txt
+nohup.out
 *.o
 *.d
 *.swp
