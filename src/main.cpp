@@ -125,7 +125,7 @@ int main(int ac, char * av[]) {
 	compute::context context(device);
 	compute::command_queue queue(context, device);	
 #endif
-
+	cout << "creating Power object" << endl;
 	Power power(standby_time);
 
 	if (test) {
